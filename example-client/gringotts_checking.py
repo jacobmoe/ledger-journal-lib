@@ -10,7 +10,7 @@
 #
 # or from stdin:
 #
-#    cat ./gringotts_statement.csv | ./gringotts_checking.csv
+#    cat ./gringotts_statement.csv | ./gringotts_checking
 
 import fileinput, csv, re
 from gringotts_payees import payee_accounts
