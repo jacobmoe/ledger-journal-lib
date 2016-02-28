@@ -1,5 +1,17 @@
 #!/usr/bin/env python
 
+# transform a csv statement from gringotts bank into the ledger cli format.
+# ensure the lib is in your $PYTHONPATH and replace "lib" in lib.command
+# and lib.builder imports
+#
+# usage:
+#
+#    ./gringotts_checking ./gringotts_statement.csv
+#
+# or from stdin:
+#
+#    cat ./gringotts_statement.csv | ./gringotts_checking.csv
+
 import fileinput, csv, re
 from gringotts_payees import payee_accounts
 from lib.command      import Command
