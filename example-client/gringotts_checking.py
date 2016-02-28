@@ -7,7 +7,7 @@ from lib.builder      import Builder
 
 class GringottsChecking(Command, Builder):
     def __init__(self):
-        Command.__init__(self, 'name')
+        Command.__init__(self, 'gringotts_checking')
         Builder.__init__(self, 'Assets:Bank:Checking:Gringotts', payee_accounts)
 
     def run(self):
