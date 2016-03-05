@@ -4,7 +4,7 @@ from string import Template
 class Builder():
 
     LEDGER_DATE_FORMAT = '%Y/%m/%d'
-    TEMPLATE_PATH = './templates/statement-item.template'
+    TEMPLATE_PATH = './templates/transaction.template'
 
     DEFAULT_DATE_FORMAT     = '%m/%d/%y'
     DEFAULT_CURRENCY_SYMBOL = '$'
@@ -35,21 +35,40 @@ class Builder():
             if (row[self.column_mapping['date']].lower() == 'date'):
                 continue
 
-            statement_item = self.__build_statement_item(row)
-            if (statement_item): result.append(statement_item)
+            trans = self.__build_row_transaction(row)
+            if trans:
+                result.append(trans)
 
-        return result
+        result = self._process_transactions(result)
+        return list(map(lambda t: self.__templated_transaction(t), result))
 
-    def __build_statement_item(self, row):
+    def __templated_transaction(self, trans):
+        template = Template(self.template_contents)
+        return template.substitute(trans)
+
+    def __build_row_transaction(self, row):
         row_date = row[self.column_mapping['date']]
-        row_desc = row[self.column_mapping['description']]
+        row_desc = self.__get_description(row)
         row_amount = row[self.column_mapping['amount']]
 
         date = datetime.datetime.strptime(row_date, self.date_format)
         payee_info = self.__payee_info(row_desc, row_amount)
         if (not payee_info): return None
 
-        return self.__build_template(date, row_desc, row_amount, payee_info)
+        return self.__build_transaction(date, row_amount, row_desc, payee_info)
+
+    def __build_transaction(self, date, amount, desc, payee_info):
+        return {
+            'primary_account': self.account_name,
+            'amount': amount,
+            'date': date.strftime(self.LEDGER_DATE_FORMAT),
+            'status': self.DEFAULT_STATUS_SYMBOL,
+            'payee': payee_info['name'],
+            'secondary_account': payee_info['account'],
+            'description': desc,
+            'currency': self.currency,
+            'currency_sym': self.currency_sym
+        }
 
     def __payee_info(self, desc, amount):
         info = {}
@@ -71,21 +90,6 @@ class Builder():
 
         return info
 
-    def __build_template(self, date, desc, amount, payee_info):
-        item_template = Template(self.template_contents)
-
-        return item_template.substitute({
-            'primary_account': self.account_name,
-            'amount': amount,
-            'date': date.strftime(self.LEDGER_DATE_FORMAT),
-            'status': self.DEFAULT_STATUS_SYMBOL,
-            'payee': payee_info['name'],
-            'secondary_account': payee_info['account'],
-            'description': desc,
-            'currency': self.currency,
-            'currency_sym': self.currency_sym
-        })
-
     def __get_template_contents(self):
         template_abs_path = os.path.join(
             os.path.dirname(__file__),
@@ -98,6 +102,14 @@ class Builder():
 
         return template_contents
 
+    def __get_description(self, row):
+        desc_position = self.column_mapping['description']
+
+        if (isinstance(desc_position, list)):
+            return " ".join(map(lambda i: row[i].strip(), desc_position))
+        else:
+            return row[desc_position]
+
     # overridables:
 
     def _get_payee_key(self, desc):
@@ -105,3 +117,6 @@ class Builder():
 
     def _payee_fallback_search(self, payee_key, amount):
         return None
+
+    def _process_transactions(self, transactions):
+        return transactions

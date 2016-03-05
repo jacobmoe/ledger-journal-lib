@@ -32,8 +32,8 @@ class Command():
         for arg_info in (self.DEFAULT_OPTIONS + self.OPTIONS):
             arg_parser.add_argument(
                 arg_info['name'],
-                help=arg_info['help'],
-                action=arg_info['action']
+                help=arg_info.get('help'),
+                action=arg_info.get('action')
             )
 
         args, file_names = arg_parser.parse_known_args()
