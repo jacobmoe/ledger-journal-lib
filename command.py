@@ -14,17 +14,17 @@ class Command():
     def run(self):
         raise NotImplementedError
 
-    def output(self, result):
+    def output(self, transactions):
         if (self.args.write):
             with open(self._file_name(), "w") as f:
                 f.write('; -*- ledger -*-\n\n')
 
-                for item in result:
-                    f.write(item)
+                for transaction in transactions:
+                    f.write(transaction.format())
         else:
             print('; -*- ledger -*-\n')
-            for item in result:
-                print(item)
+            for transaction in transactions:
+                print(transaction.format())
 
     def __parse_arguments(self):
         arg_parser = argparse.ArgumentParser()

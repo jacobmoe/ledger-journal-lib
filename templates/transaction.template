@@ -1,5 +1,5 @@
-$date $status $payee
+$date $status $payee_name
     ; $description
     $primary_account                        $currency_sym$amount $currency
-    $secondary_account
+    $payee_account
 

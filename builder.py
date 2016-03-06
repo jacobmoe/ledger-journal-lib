@@ -1,33 +1,29 @@
-import os, datetime
-from string import Template
+import datetime
+from transaction import Transaction
 
-class Builder():
+class Builder(Transaction):
 
-    LEDGER_DATE_FORMAT = '%Y/%m/%d'
-    TEMPLATE_PATH = './templates/transaction.template'
-
-    DEFAULT_DATE_FORMAT     = '%m/%d/%y'
     DEFAULT_CURRENCY_SYMBOL = '$'
     DEFAULT_CURRENCY_TEXT   = ''
     DEFAULT_STATUS_SYMBOL   = '*'
     DEFAULT_ACCOUNT         = ">>>UNKNOWN ACCOUNT<<<"
     DEFAULT_PAYEE           = ">>>UNKNOWN PAYEE<<<"
-
-    DEFAULT_COLUMN_MAPPING = {
+    DEFAULT_DATE_FORMAT     = '%m/%d/%y'
+    DEFAULT_COLUMN_MAPPING  = {
         'date': 0,
         'description': 1,
         'amount': 2
     }
 
-    def __init__(self, account_name, payee_accounts):
-        self.account_name = account_name
+    def __init__(self, account_name, payee_accounts, opts={}):
+        self.account_name   = account_name
         self.payee_accounts = payee_accounts
 
-        self.column_mapping    = self.DEFAULT_COLUMN_MAPPING
-        self.date_format       = self.DEFAULT_DATE_FORMAT
-        self.currency_sym      = self.DEFAULT_CURRENCY_SYMBOL
-        self.currency          = self.DEFAULT_CURRENCY_TEXT
-        self.template_contents = self.__get_template_contents()
+        self.column_mapping  = self.DEFAULT_COLUMN_MAPPING
+        self.date_format     = self.DEFAULT_DATE_FORMAT
+        self.currency_symbol = self.DEFAULT_CURRENCY_SYMBOL
+        self.status_symbol   = self.DEFAULT_STATUS_SYMBOL
+        self.currency        = self.DEFAULT_CURRENCY_TEXT
 
     def build(self, reader):
         result = []
@@ -35,18 +31,13 @@ class Builder():
             if (row[self.column_mapping['date']].lower() == 'date'):
                 continue
 
-            trans = self.__build_row_transaction(row)
+            trans = self.__build_transaction(row)
             if trans:
                 result.append(trans)
 
-        result = self._process_transactions(result)
-        return list(map(lambda t: self.__templated_transaction(t), result))
+        return result
 
-    def __templated_transaction(self, trans):
-        template = Template(self.template_contents)
-        return template.substitute(trans)
-
-    def __build_row_transaction(self, row):
+    def __build_transaction(self, row):
         row_date = row[self.column_mapping['date']]
         row_desc = self.__get_description(row)
         row_amount = row[self.column_mapping['amount']]
@@ -55,20 +46,17 @@ class Builder():
         payee_info = self.__payee_info(row_desc, row_amount)
         if (not payee_info): return None
 
-        return self.__build_transaction(date, row_amount, row_desc, payee_info)
-
-    def __build_transaction(self, date, amount, desc, payee_info):
-        return {
+        return Transaction({
             'primary_account': self.account_name,
-            'amount': amount,
-            'date': date.strftime(self.LEDGER_DATE_FORMAT),
+            'amount': row_amount,
+            'date': date,
             'status': self.DEFAULT_STATUS_SYMBOL,
-            'payee': payee_info['name'],
-            'secondary_account': payee_info['account'],
-            'description': desc,
+            'payee_name': payee_info['name'],
+            'payee_account': payee_info['account'],
+            'description': row_desc,
             'currency': self.currency,
-            'currency_sym': self.currency_sym
-        }
+            'currency_symbol': self.currency_symbol
+        })
 
     def __payee_info(self, desc, amount):
         info = {}
@@ -83,24 +71,12 @@ class Builder():
 
         if (payee_account):
             info['account'] = payee_account[0]
-            info['name'] = payee_account[1]
+            info['name']    = payee_account[1]
         else:
             info['account'] = self.DEFAULT_ACCOUNT
-            info['name'] = self.DEFAULT_PAYEE
+            info['name']    = self.DEFAULT_PAYEE
 
         return info
-
-    def __get_template_contents(self):
-        template_abs_path = os.path.join(
-            os.path.dirname(__file__),
-            self.TEMPLATE_PATH
-        )
-
-        template_file = open(template_abs_path, 'rt')
-        template_contents = template_file.read()
-        template_file.close()
-
-        return template_contents
 
     def __get_description(self, row):
         desc_position = self.column_mapping['description']
@@ -117,6 +93,3 @@ class Builder():
 
     def _payee_fallback_search(self, payee_key, amount):
         return None
-
-    def _process_transactions(self, transactions):
-        return transactions
